@@ -1,0 +1,62 @@
+[editor]
+line_wrapping=true
+line_break_column=72
+auto_continue_multiline=true
+
+[file_prefs]
+final_new_line=true
+ensure_convert_new_lines=false
+strip_trailing_spaces=false
+replace_tabs=true
+
+[indentation]
+indent_width=4
+indent_type=0
+indent_hard_tab_width=8
+detect_indent=true
+detect_indent_width=false
+indent_mode=2
+
+[project]
+name=compressIt
+base_path=D:\\geany projects\\compressIt\\
+description=
+file_patterns=
+
+[long line marker]
+long_line_behaviour=1
+long_line_column=100
+
+[files]
+current_page=2
+FILE_NAME_0=4039;C;0;EUTF-8;0;1;1;D%3A%5Cgeany%20projects%5CcompressIt%5Csrc%5Cmain.c;0;4
+FILE_NAME_1=704;C++;0;EUTF-8;0;1;1;D%3A%5Cgeany%20projects%5CcompressIt%5Cinclude%5Chuffman.h;0;4
+FILE_NAME_2=2605;C;0;EUTF-8;0;1;1;D%3A%5Cgeany%20projects%5CcompressIt%5Csrc%5Chuffman.c;0;4
+FILE_NAME_3=9897;C++;0;EUTF-8;0;1;1;D%3A%5Cgeany%20projects%5CcompressIt%5Cinclude%5Cdsa.h;0;4
+FILE_NAME_4=434;CMake;0;EUTF-8;0;1;1;D%3A%5Cgeany%20projects%5CcompressIt%5CCMakeLists.txt;0;4
+
+[lsp]
+enabled=true
+settings_type=0
+config_file=
+
+[build-menu]
+EX_00_LB=_Execute
+EX_00_CM="D:\\\\geany projects\\\\compressIt\\\\build\\\\compressIt.exe"
+EX_00_WD=
+EX_01_LB=
+EX_01_CM=
+EX_01_WD=
+CFT_00_LB=_Compile
+CFT_00_CM=cmake --build "D:\\\\geany projects\\\\compressIt\\\\build" --verbose
+CFT_00_WD=
+CFT_01_LB=_Build
+CFT_01_CM=cmake --build "D:\\\\geany projects\\\\compressIt\\\\build"
+CFT_01_WD=
+filetypes=C;C++;
+C++FT_02_LB=_Lint
+C++FT_02_CM=cppcheck --language=c --enable=warning,style --check-level=exhaustive --template=gcc "%f"
+C++FT_02_WD=
+CFT_02_LB=_Lint
+CFT_02_CM=cppcheck --language=c --enable=warning,style --check-level=exhaustive --template=gcc "%f"
+CFT_02_WD=

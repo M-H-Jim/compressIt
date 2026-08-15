@@ -1,0 +1,8 @@
+*.o
+*.exe
+*.db
+*.a
+*.clangd
+lib/
+build/
+debug/
