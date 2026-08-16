@@ -11,8 +11,9 @@
 #define NK_IMPLEMENTATION
 #define NK_GLFW_GL3_IMPLEMENTATION
 
-#include <ctype.h>
 #include "huffman.h"
+
+#include "ui.h"
 
 #include "nuklear.h"
 #include "nuklear_glfw_gl3.h"
@@ -31,15 +32,39 @@ void processInput(GLFWwindow *window);
 
 
 
+CompressionData compressionData = {0};
+UIState state = {0};
+UI ui = {
+    .compressionData = &compressionData,
+    .state = &state
+};
 
-char droppedPath[PATH_MAX] = {0};
+
 
 static void dropCallback(GLFWwindow* window, int path_count, const char* paths[]) {
     if (path_count > 0) {
-        snprintf(droppedPath, sizeof(droppedPath), "%s", paths[0]);
-        droppedPath[PATH_MAX - 1] = '\0';
+        snprintf(state.droppedPath, sizeof(state.droppedPath), "%s", paths[0]);
+        state.droppedPath[PATH_MAX - 1] = '\0';
     }
 }
+
+
+
+void compressCallback(CompressionData *compressionData, const char *path) {
+    memset(compressionData->frequency, 0, sizeof(compressionData->frequency));
+    freeCodes(compressionData->codes);
+    compressionData->maxFrequency = 0;
+    compressionData->count = 0;
+    
+    huffmanCompress(compressionData->frequency, compressionData->codes, path, &compressionData->count, &compressionData->maxFrequency);
+    
+}
+
+
+
+
+
+
 
 
 int main(void) {
@@ -88,19 +113,6 @@ int main(void) {
     
     
     
-    // Information
-    
-    uint64_t frequency[256] = {0};
-    char *codes[256] = {NULL};
-    int mx = 0;
-    int count = 0;
-    
-    
-    //~ qsort(freq, 256, sizeof(int64_t), compare);
-    
-    
-    //
-    
     
     struct nk_glfw glfw = {0};
     struct nk_context *ctx = nk_glfw3_init(&glfw, window, NK_GLFW3_INSTALL_CALLBACKS);
@@ -114,9 +126,7 @@ int main(void) {
         nk_glfw3_font_stash_end(&glfw);
     }
     
-    bool showCharts = false;
     
-    static int currentTab = 0;
     
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -129,127 +139,7 @@ int main(void) {
         nk_glfw3_new_frame(&glfw);
         
         
-        if (nk_begin(ctx, "CompressIt", nk_rect(0, 0, windowWidth, windowHeight), 
-                     NK_WINDOW_BORDER   |
-                     NK_WINDOW_TITLE))
-        {
-            
-            
-            nk_layout_row_dynamic(ctx, 30, 1);
-            nk_label(ctx, "Drop a file here", NK_TEXT_CENTERED);
-            if (droppedPath[0] != '\0') {
-                nk_layout_row_dynamic(ctx, 30, 2);
-                if (nk_button_label(ctx, "Compress It")) {
-                    for (int i = 0; i < BYTE_COUNT; i++) {
-                        frequency[i] = 0;
-                    }
-                    freeCodes(codes);
-                    mx = 0;
-                    count = 0;
-                    huffmanCompress(frequency, codes, droppedPath, &count, &mx);
-                    showCharts = nk_true;
-                    printf("Button pressed\n");
-                }
-                if (nk_button_label(ctx, "Decompress It")) {
-                    printf("button 2 pressed\n");
-                }
-            }
-            if (showCharts) {
-                
-                static const char *tabNames[] = {"Frequency Graph", "Huffman Codes"};
-                
-                nk_style_push_vec2(ctx, &ctx->style.window.spacing, nk_vec2(0, 0));
-                nk_style_push_float(ctx, &ctx->style.button.rounding, 0);
-                
-                nk_layout_row_begin(ctx, NK_STATIC, 30, 2);
-                
-                for (size_t i = 0; i < 2; i++) {
-                    const struct nk_user_font *font = ctx->style.font;
-                    
-                    float textWidth = font->width(font->userdata, font->height, tabNames[i], nk_strlen(tabNames[i]));
-                    float widgetWidth = textWidth + 3.0f * ctx->style.button.padding.x;
-                    
-                    nk_layout_row_push(ctx, widgetWidth);
-                    
-                    if (currentTab == i) {
-                        struct nk_style_item normal = ctx->style.button.normal;
-                        ctx->style.button.normal = ctx->style.button.active;
-                        if (nk_button_label(ctx, tabNames[i])) currentTab = i;
-                        ctx->style.button.normal = normal;
-                    }
-                    else {
-                        if (nk_button_label(ctx, tabNames[i])) currentTab = i;
-                    }
-                }
-                
-                nk_layout_row_end(ctx);
-                
-                nk_style_pop_float(ctx);
-                nk_style_pop_vec2(ctx);
-                
-                
-                nk_layout_row_dynamic(ctx, windowHeight - 150, 1);
-                
-                if (nk_group_begin(ctx, "Notebook", NK_WINDOW_BORDER)) {
-                    
-                    switch (currentTab) {
-                        case 0: {
-                            
-                            int hovered = -1;
-                            
-                            nk_layout_row_dynamic(ctx, windowHeight - 180, 1);
-                            
-                            if (nk_chart_begin(ctx, NK_CHART_COLUMN, count, 0.0f, (float)mx)) {
-                                for (int i = 0; i < 256; i++) {
-                                    if (frequency[i]) {
-                                        nk_flags res = nk_chart_push(ctx, (float)frequency[i]);
-                                        if (res & NK_CHART_HOVERING) hovered = i;
-                                    }
-                                }
-                                nk_chart_end(ctx);
-                            }
-                            
-                            if (hovered != -1) {
-                                nk_uchar c = (nk_uchar)hovered;
-                                if (isprint(c)) {
-                                    nk_tooltipf(ctx, "Char: |%c|  Hex: 0x%02X  Frequency: %lld", c, hovered, frequency[hovered]);
-                                }
-                                else {
-                                    nk_tooltipf(ctx, "Hex: 0x%02X  Frequency: %lld", hovered, frequency[hovered]);
-                                }
-                            }
-                            break;
-                        }
-                        case 1: {
-                            nk_layout_row_dynamic(ctx, 25, 3);
-                            nk_label(ctx, "Byte", NK_TEXT_LEFT);
-                            nk_label(ctx, "Frequency", NK_TEXT_LEFT);
-                            nk_label(ctx, "Huffman Code", NK_TEXT_LEFT);
-                            
-                            
-                            for (uint32_t i = 0; i < BYTE_COUNT; i++) {
-                                if (frequency[i]) {
-                                    
-                                    char character[20];
-                                    nk_uchar c = i;
-                                    
-                                    if (isprint(c)) snprintf(character, sizeof(character), "0x%02X  |%c|", i, c);
-                                    else snprintf(character, sizeof(character), "0x%02X", i);
-                                    
-                                    nk_label(ctx, character, NK_TEXT_LEFT);
-                                    nk_labelf(ctx, NK_TEXT_LEFT, "%lld", frequency[i]);
-                                    nk_label(ctx, codes[i], NK_TEXT_LEFT);
-                                }
-                            }
-                            break;
-                        }
-                        
-                    }
-                    nk_group_end(ctx);
-                }
-            }
-        }
-        nk_end(ctx);
+        uiDraw(ctx, &ui, windowWidth, windowHeight, compressCallback);
         
         
         
@@ -267,7 +157,7 @@ int main(void) {
     
     
     
-    freeCodes(codes);
+    freeCodes(compressionData.codes);
     nk_glfw3_shutdown(&glfw);
     glfwDestroyWindow(window);
     glfwTerminate();

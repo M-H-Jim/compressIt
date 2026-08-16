@@ -8,6 +8,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 add_executable(compressIt
     src/main.c
     src/huffman.c
+    src/ui.c
 )
 
 target_include_directories(compressIt PRIVATE
