@@ -7,13 +7,6 @@
 
 #include "nuklear.h"
 
-static void drawFileSection (struct nk_context *ctx, UI *ui, CompressCallback compressCallback);
-static void drawTabs(struct nk_context *ctx, UIState *state);
-static void drawTabContent(struct nk_context *ctx, UI *ui, int windowHeight);
-static void drawFrequencyGraph(struct nk_context *ctx, UI *ui, int windowHeight);
-static void drawHuffmanCodes(struct nk_context *ctx, UI *ui);
-
-
 
 
 
@@ -22,10 +15,7 @@ static void drawHuffmanCodes(struct nk_context *ctx, UI *ui);
 
 
 void uiDraw(struct nk_context *ctx, UI *ui, int windowWidth, int windowHeight, CompressCallback compressCallback) {
-    if (!nk_begin(ctx, "CompressIt", nk_rect(0, 0, windowWidth, windowHeight), 
-                    NK_WINDOW_BORDER    |
-                    NK_WINDOW_TITLE))
-    {
+    if (!nk_begin(ctx, "CompressIt by M.H.Jim", nk_rect(0, 0, windowWidth, windowHeight), NK_WINDOW_BORDER | NK_WINDOW_TITLE)) {
         nk_end(ctx);
         return;
     }
@@ -45,24 +35,28 @@ void uiDraw(struct nk_context *ctx, UI *ui, int windowWidth, int windowHeight, C
 
 
 static void drawFileSection(struct nk_context *ctx, UI *ui, CompressCallback compressCallback) {
-    nk_layout_row_dynamic(ctx, 30, 1);
-    nk_label(ctx, "Drop a file here", NK_TEXT_CENTERED);
     
-    if (ui->state->droppedPath[0] == '\0') return;
+    if (ui->state->droppedPath[0] == '\0') {
+        nk_layout_row_dynamic(ctx, 50, 1);
+        nk_label(ctx, "Drop a file here!!!", NK_TEXT_ALIGN_CENTERED);
+        return;
+    }
+    
+    nk_layout_row_dynamic(ctx, 30, 1);
+    
+    nk_label(ctx, ui->state->droppedPath, NK_TEXT_ALIGN_CENTERED);
     
     nk_layout_row_dynamic(ctx, 30, 2);
     
     if (nk_button_label(ctx, "Compress It")) {
         if (compressCallback) {
             compressCallback(ui->compressionData, ui->state->droppedPath);
-            ui->state->showTabs = true;
+            ui->state->showTabs = nk_true;
         }
     }
-    
     if (nk_button_label(ctx, "Decompress It")) {
-        printf("Decompress btn clk\n");
-    }
-    
+        printf("ctx");
+    } 
 }
 
 static void drawTabs(struct nk_context *ctx, UIState *state) {
@@ -120,7 +114,7 @@ static void drawTabContent(struct nk_context *ctx, UI *ui, int windowHeight) {
 static void drawFrequencyGraph(struct nk_context *ctx, UI *ui, int windowHeight) {
     int hovered = -1;
     
-    nk_layout_row_dynamic(ctx, windowHeight - 100, 1);
+    nk_layout_row_dynamic(ctx, windowHeight - 180, 1);
     if (nk_chart_begin(ctx, NK_CHART_COLUMN, ui->compressionData->count, 0.0f, (float)ui->compressionData->maxFrequency)) {
         for (uint16_t i = 0; i < BYTE_COUNT; i++) {
             if (ui->compressionData->frequency[i]) {

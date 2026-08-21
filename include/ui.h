@@ -32,6 +32,13 @@ typedef void (*CompressCallback) (CompressionData *compressionData, const char *
 
 void uiDraw(struct nk_context *ctx, UI *ui, int windowWidth, int windowHeight, CompressCallback compressCallback);
 
+static void drawFileSection (struct nk_context *ctx, UI *ui, CompressCallback compressCallback);
+static void drawTabs(struct nk_context *ctx, UIState *state);
+static void drawTabContent(struct nk_context *ctx, UI *ui, int windowHeight);
+static void drawFrequencyGraph(struct nk_context *ctx, UI *ui, int windowHeight);
+static void drawHuffmanCodes(struct nk_context *ctx, UI *ui);
+
+
 
 
 

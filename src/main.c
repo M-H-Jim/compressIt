@@ -63,10 +63,6 @@ void compressCallback(CompressionData *compressionData, const char *path) {
 
 
 
-
-
-
-
 int main(void) {
     
 
@@ -116,9 +112,7 @@ int main(void) {
     
     struct nk_glfw glfw = {0};
     struct nk_context *ctx = nk_glfw3_init(&glfw, window, NK_GLFW3_INSTALL_CALLBACKS);
-    static nk_flags window_flags = NK_WINDOW_TITLE            | 
-                               NK_WINDOW_BORDER               |
-                               NK_WINDOW_NO_SCROLLBAR;
+    
     // font
     {
         struct nk_font_atlas *atlas;
