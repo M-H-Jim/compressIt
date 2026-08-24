@@ -36,7 +36,6 @@ HuffmanNode* buildHuffmanTree (HuffmanHeap *heap) {
         if(!pushHuffmanHeap(heap, parent)) return NULL;
     }
     HuffmanNode *root = peekHuffmanHeap(heap);
-    //~ popHuffmanHeap(heap, &root);
     
     return root;
 }
@@ -146,7 +145,7 @@ HuffmanNode* deserializeTree(FILE *input) {
 
 
 
-bool huffmanCompress(uint64_t frequency[], char *codes[256], const char *inputFilePath, int *count, int *mx) {
+bool huffmanCompress(uint64_t frequency[], char *codes[256], const char *inputFilePath, int *count, int *mx, HuffmanNode **node) {
     
     char outputFilePath[PATH_MAX];
     snprintf(outputFilePath, sizeof(outputFilePath), "%s.huff", inputFilePath);
@@ -183,6 +182,12 @@ bool huffmanCompress(uint64_t frequency[], char *codes[256], const char *inputFi
     }
     
     HuffmanNode *root = buildHuffmanTree(heap);
+    
+    printf("b->%p\n", root);
+    *node = root;
+    
+    
+    
     if (!root) {
         freeHuffmanHeap(heap);
         fclose(input);
@@ -248,7 +253,7 @@ bool huffmanCompress(uint64_t frequency[], char *codes[256], const char *inputFi
     fclose(output);
     
     
-    freeHuffmanTree(root);
+    //~ freeHuffmanTree(root);
     freeHuffmanHeap(heap);
     //~ freeCodes(codes);
     

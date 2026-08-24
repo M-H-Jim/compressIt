@@ -39,6 +39,10 @@ UI ui = {
     .state = &state
 };
 
+HuffmanNode *root = NULL;
+HuffmanUINode *uiNode = NULL;
+
+
 
 
 static void dropCallback(GLFWwindow* window, int path_count, const char* paths[]) {
@@ -56,8 +60,12 @@ void compressCallback(CompressionData *compressionData, const char *path) {
     compressionData->maxFrequency = 0;
     compressionData->count = 0;
     
-    huffmanCompress(compressionData->frequency, compressionData->codes, path, &compressionData->count, &compressionData->maxFrequency);
     
+    freeHuffmanTree(root);
+    
+    huffmanCompress(compressionData->frequency, compressionData->codes, path, &compressionData->count, &compressionData->maxFrequency, &root);
+    printf("a->%p\n", root);
+
 }
 
 
@@ -133,7 +141,7 @@ int main(void) {
         nk_glfw3_new_frame(&glfw);
         
         
-        uiDraw(ctx, &ui, windowWidth, windowHeight, compressCallback);
+        uiDraw(ctx, &ui, windowWidth, windowHeight, compressCallback, &root, &uiNode);
         
         
         
@@ -152,6 +160,7 @@ int main(void) {
     
     
     freeCodes(compressionData.codes);
+    freeUITree(uiNode);
     nk_glfw3_shutdown(&glfw);
     glfwDestroyWindow(window);
     glfwTerminate();

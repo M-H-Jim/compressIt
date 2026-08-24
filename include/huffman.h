@@ -19,6 +19,10 @@ int compareHuffman (HuffmanNode *const *a, HuffmanNode *const *b);
 
 
 typedef struct HuffmanHeap HuffmanHeap;
+//~ typedef struct HuffmanUINode HuffmanUINode;
+
+
+
 
 HuffmanNode* buildHuffmanTree (HuffmanHeap *heap);
 
@@ -33,7 +37,7 @@ void freeHuffmanTree(HuffmanNode *node);
 void freeCodes(char *codes[BYTE_COUNT]);
 
 
-bool huffmanCompress(uint64_t frequency[], char *codes[BYTE_COUNT], const char *inputFilePath, int *count, int *mx);
+bool huffmanCompress(uint64_t frequency[], char *codes[BYTE_COUNT], const char *inputFilePath, int *count, int *mx, HuffmanNode **node);
 
 bool serializeTree(HuffmanNode *root, FILE *output);
 
