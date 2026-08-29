@@ -72,4 +72,40 @@ void freeUITree(HuffmanUINode *node);
 
 
 
+
+
+typedef struct HuffmanTreeView {
+    float zoom;
+    
+    float panX;
+    float panY;
+    
+    bool dragging;
+    
+    float dragStartX;
+    float dragStartY;
+    
+    float panStartX;
+    float panStartY;
+    HuffmanUINode *hoveredNode;
+} HuffmanTreeView;
+
+static void treeToScreen(float treeX, float treeY, float *screenX, float *screenY);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #endif // UI_H

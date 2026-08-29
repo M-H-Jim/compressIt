@@ -8,6 +8,47 @@
 
 #include "nuklear.h"
 
+#define NODE_WIDTH  150.0f
+#define NODE_HEIGHT 50.0f
+
+HuffmanTreeView view = {
+    .zoom = 1.0f,
+    .panX = 300.0f,
+    .panY = 80.0f,
+    .dragging = false,
+    .dragStartX = 0.0f,
+    .dragStartY = 0.0f,
+    .panStartX = 0.0f,
+    .panStartY = 0.0f,
+    .hoveredNode = NULL
+};
+
+
+
+static void treeToScreen(float treeX, float treeY, float *screenX, float *screenY) {
+    *screenX = treeX * view.zoom + view.panX;
+    *screenY = treeY * view.zoom + view.panY;
+    
+}
+static void screenToTree(float screenX, float screenY, float *treeX, float *treeY) {
+    *treeX = (screenX - view.panX) / view.zoom;
+    *treeY = (screenY - view.panY) / view.zoom;
+}
+
+static bool pointInNode(float x,float y, float nodeX, float nodeY) {
+    return x >= nodeX - NODE_WIDTH / 2.0f &&
+           x <= nodeX + NODE_WIDTH / 2.0f &&
+           y >= nodeY - NODE_HEIGHT / 2.0f &&
+           y <= nodeY + NODE_HEIGHT / 2.0f;
+}
+
+static HuffmanUINode *findHoveredNode (HuffmanUINode *node, float treeX, float treeY) {
+    if (node == NULL) return NULL;
+    if (pointInNode(treeX, treeY, node->x, node->y)) return node;
+    HuffmanUINode *found = findHoveredNode(node->left, treeX, treeY);
+    if (found) return found;
+    return findHoveredNode(node->right, treeX, treeY);
+}
 
 HuffmanUINode* createUITree(HuffmanNode *node) {
     if (node == NULL) return NULL;
@@ -27,7 +68,7 @@ void layoutLeaves(HuffmanUINode *node, int *leafIndex) {
     if (node == NULL) return;
     
     if (node->left == NULL && node->right == NULL) {
-        node->x = (*leafIndex + 1) * 20.0f;
+        node->x = (*leafIndex + 1) * 180.0f;
         (*leafIndex)++;
         return;
     }
@@ -52,21 +93,107 @@ void layoutY(HuffmanUINode *node, float y) {
     if (node == NULL) return;
     node->y = y;
     
-    layoutY(node->left, y + 50.0f);
-    layoutY(node->right, y + 50.0f);
+    layoutY(node->left, y + 150.0f);
+    layoutY(node->right, y + 150.0f);
 }
 
-void drawTreeConnections(struct nk_command_buffer *canvas, HuffmanUINode *node) {
+void drawTreeConnections(struct nk_context *ctx, HuffmanUINode *node) {
+    struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
+    const struct nk_user_font *font = ctx->style.font;
     if (node == NULL) return;
+    float x1, y1;
+    treeToScreen(node->x, node->y, &x1, &y1);
+    
     if (node->left != NULL) {
-        nk_stroke_line(canvas, node->x, node->y, node->left->x, node->left->y, 2.0f, nk_rgb(200, 200, 200));
+        float x2, y2;
+        treeToScreen(node->left->x, node->left->y, &x2, &y2);
+        
+        nk_stroke_line(canvas, x1, y1, x2, y2, 2.0f, nk_rgb(200, 200, 200));
+        
+        float mx = (x1 + x2) / 2.0f;
+        float my = (y1 + y2) / 2.0f;
+        
+        nk_draw_text(canvas, nk_rect(mx - 5, my - 15, 15, font->height), "0", 1, font, 
+                     nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+        
     }
     if (node->right != NULL) {
-        nk_stroke_line(canvas, node->x, node->y, node->right->x, node->right->y, 2.0f, nk_rgb(200, 200, 200));
+        float x2, y2;
+        treeToScreen(node->right->x, node->right->y, &x2, &y2);
+        nk_stroke_line(canvas, x1, y1, x2, y2, 2.0f, nk_rgb(200, 200, 200));
+        
+        float mx = (x1 + x2) / 2.0f;
+        float my = (y1 + y2) / 2.0f;
+        
+        nk_draw_text(canvas, nk_rect(mx + 5, my - 15, 15, font->height), "1", 1, font, 
+                     nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+        
     }
-    drawTreeConnections(canvas, node->left);
-    drawTreeConnections(canvas, node->right);
+    drawTreeConnections(ctx, node->left);
+    drawTreeConnections(ctx, node->right);
 }
+
+
+
+void drawTreeNodes(struct nk_context *ctx, HuffmanUINode *node) {
+    struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
+    bool hovered = (node == view.hoveredNode);
+    
+    if (node == NULL) return;
+    float x;
+    float y;
+    
+    treeToScreen(node->x, node->y, &x, &y);
+    
+    float width = NODE_WIDTH * view.zoom;
+    float height = NODE_HEIGHT * view.zoom;
+    
+    struct nk_rect rect = nk_rect(x - width / 2.0f, y - height / 2.0f, width, height);
+    
+    bool isLeaf = node->left == NULL && node->right == NULL;
+    
+    if (isLeaf) {
+        if (hovered) {
+            nk_fill_rect(canvas, rect, 6.0f, nk_rgb(35, 95, 70));
+            nk_stroke_rect(canvas, rect, 6.0f, 3.0f, nk_rgb(70, 210, 150));
+            nk_tooltipf(ctx, "Char: |%c|  Hex: 0x%02X  Frequency: %lld", node->node->character, node->node->character, node->node->frequency);
+        }
+        else {
+            nk_fill_rect(canvas, rect, 6.0f, nk_rgb(30, 75, 55));
+            nk_stroke_rect(canvas, rect, 6.0f, 2.0f, nk_rgb(55, 175, 125));
+        }
+    }
+    else {
+        if (hovered) {
+            nk_fill_rect(canvas, rect, 6.0f, nk_rgb(70, 65, 130));
+            nk_stroke_rect(canvas, rect, 6.0f, 3.0f, nk_rgb(155, 150, 255));
+            nk_tooltipf(ctx, "Frequency: %lld", node->node->frequency);
+        }
+        else {
+            nk_fill_rect(canvas, rect, 6.0f, nk_rgb(55, 50, 105));
+            nk_stroke_rect(canvas, rect, 6.0f, 2.0f, nk_rgb(125, 120, 240));
+        }
+    }
+    
+    
+    char text[64];
+    //~ if (isLeaf) {
+        //~ if (isprint(node->node->character)) snprintf(text, sizeof(text), "0x%02X  |%c| : %lld", node->node->character, node->node->character, node->node->frequency);
+    //~ }
+
+    if (isLeaf) snprintf(text, sizeof(text), "0x%02X", node->node->character);
+    else snprintf(text, sizeof(text), "%lld", node->node->frequency);
+
+    const struct nk_user_font *font = ctx->style.font;
+    float textWidth = font->width(font->userdata, font->height, text, strlen(text));
+    nk_draw_text(canvas, nk_rect(x - textWidth / 2.0f, y - font->height / 2.0f, textWidth, font->height),
+                 text, strlen(text), font, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+    
+    drawTreeNodes(ctx, node->left);
+    drawTreeNodes(ctx, node->right);
+    
+}
+
 
 void freeUITree (HuffmanUINode *node) {
     if (node == NULL) return;
@@ -204,6 +331,22 @@ static void drawTabs(struct nk_context *ctx, UIState *state) {
     nk_style_pop_vec2(ctx);
 }
 
+
+void zoomAt (float mouseX, float mouseY, float zoomFactor) {
+    float oldZoom  = view.zoom;
+    float treeX = (mouseX - view.panX) / oldZoom;
+    float treeY = (mouseY - view.panY) / oldZoom;
+    float newZoom = oldZoom * zoomFactor;
+    if (newZoom < 0.1f) newZoom = 0.1f;
+    if (newZoom > 5.0f) newZoom = 5.0f;
+    view.zoom = newZoom;
+    view.panX = mouseX - treeX * newZoom;
+    view.panY = mouseY - treeY * newZoom;
+}
+
+
+
+
 static void drawTabContent(struct nk_context *ctx, UI *ui, int windowHeight, HuffmanUINode *uiNode) {
     switch (ui->state->currentTab) {
         case 0: {
@@ -215,7 +358,47 @@ static void drawTabContent(struct nk_context *ctx, UI *ui, int windowHeight, Huf
             break;
         }
         case 2: {
-            drawTreeConnections(nk_window_get_canvas(ctx), uiNode);
+            
+            const struct nk_input in = ctx->input;
+            if(in.mouse.buttons[NK_BUTTON_MIDDLE].down) {
+                float mouseX = in.mouse.pos.x;
+                float mouseY = in.mouse.pos.y;
+                
+                if (!view.dragging) {
+                    view.dragging = true;
+                    view.dragStartX = mouseX;
+                    view.dragStartY = mouseY;
+                    view.panStartX = view.panX;
+                    view.panStartY = view.panY;
+                }
+                else {
+                    view.panX = view.panStartX + (mouseX - view.dragStartX);
+                    view.panY = view.panStartY + (mouseY - view.dragStartY);
+                }
+            }
+            else {
+                view.dragging = false;
+            }
+            
+            if (in.mouse.scroll_delta.y > 0) {
+                float mouseX = in.mouse.pos.x;
+                float mouseY = in.mouse.pos.y;
+                zoomAt(mouseX, mouseY, 1.1f);
+            }
+            if (in.mouse.scroll_delta.y < 0) {
+                float mouseX = in.mouse.pos.x;
+                float mouseY = in.mouse.pos.y;
+                zoomAt(mouseX, mouseY, 0.9f);
+            }
+            
+            float treeX;
+            float treeY;
+            
+            screenToTree(in.mouse.pos.x, in.mouse.pos.y, &treeX, &treeY);
+            view.hoveredNode = findHoveredNode(uiNode, treeX, treeY);
+            
+            drawTreeConnections(ctx, uiNode);
+            drawTreeNodes(ctx, uiNode);
         }
     }
 }
@@ -225,7 +408,7 @@ static void drawTabContent(struct nk_context *ctx, UI *ui, int windowHeight, Huf
 static void drawFrequencyGraph(struct nk_context *ctx, UI *ui, int windowHeight) {
     int hovered = -1;
     
-    nk_layout_row_dynamic(ctx, windowHeight - 180, 1);
+    nk_layout_row_dynamic(ctx, windowHeight - 200, 1);
     if (nk_chart_begin(ctx, NK_CHART_COLUMN, ui->compressionData->count, 0.0f, (float)ui->compressionData->maxFrequency)) {
         for (uint16_t i = 0; i < BYTE_COUNT; i++) {
             if (ui->compressionData->frequency[i]) {
@@ -235,20 +418,37 @@ static void drawFrequencyGraph(struct nk_context *ctx, UI *ui, int windowHeight)
         }
         nk_chart_end(ctx);
     }
-    
+    nk_layout_row_dynamic(ctx, 25, 1);
+    nk_label(ctx, "X-axis: Byte Values, Y-axis: Frequency", NK_TEXT_CENTERED);
     if (hovered != -1) {
         nk_uchar c = (nk_uchar)hovered;
         if (isprint(c)) {
-            nk_tooltipf(ctx, "Char: |%c|  Hex: 0x%02X  Frequency: %lld", c, hovered, ui->compressionData->frequency[hovered]);
+            //~ nk_tooltipf(ctx, "Char: |%c|  Hex: 0x%02X  \nFrequency: %lld", c, hovered, ui->compressionData->frequency[hovered]);
+            if (nk_tooltip_begin(ctx, 150)) {
+                nk_layout_row_dynamic(ctx, 20, 1);
+                nk_labelf(ctx, NK_TEXT_LEFT, "Character: %c", c);
+                nk_labelf(ctx, NK_TEXT_LEFT, "Hex Value: 0x%02X", hovered);
+                nk_labelf(ctx, NK_TEXT_LEFT, "Frequency: %lld", ui->compressionData->frequency[hovered]);
+            }
+            nk_tooltip_end(ctx);
         }
         else {
-            nk_tooltipf(ctx, "Hex: 0x%02X  Frequency: %lld", hovered, ui->compressionData->frequency[hovered]);
+            if (nk_tooltip_begin(ctx, 150)) {
+                nk_layout_row_dynamic(ctx, 20, 1);
+                nk_labelf(ctx, NK_TEXT_LEFT, "Hex Value: 0x%02X", hovered);
+                nk_labelf(ctx, NK_TEXT_LEFT, "Frequency: %lld", ui->compressionData->frequency[hovered]);
+            }
+            nk_tooltip_end(ctx);
         }
     }
     
 }
 
 static void drawHuffmanCodes(struct nk_context *ctx, UI *ui) {
+    
+    struct nk_color old_color = ctx->style.text.color;
+    ctx->style.text.color = nk_rgb(255, 255, 255);
+    
     nk_layout_row_dynamic(ctx, 25, 3);
     nk_label(ctx, "Byte", NK_TEXT_LEFT);
     nk_label(ctx, "Frequency", NK_TEXT_LEFT);
@@ -266,15 +466,17 @@ static void drawHuffmanCodes(struct nk_context *ctx, UI *ui) {
         
         nk_label(ctx, character, NK_TEXT_LEFT);
         nk_labelf(ctx, NK_TEXT_LEFT, "%lld", ui->compressionData->frequency[i]);
+        
+        //~ char code[256];
+        //~ snprintf(code, sizeof(code), "%s", ui->compressionData->codes[i]);
+        //~ nk_flags flags = NK_EDIT_FIELD | NK_EDIT_READ_ONLY;
+        //~ nk_edit_string(ctx, flags, code, &(int){(int)strlen(code)}, sizeof(code), nk_filter_default);
+        
+        
         nk_label(ctx, ui->compressionData->codes[i], NK_TEXT_LEFT);
         
     }
-
-    
-    
-    
-    
-    
+    ctx->style.text.color = old_color;
 }
 
 

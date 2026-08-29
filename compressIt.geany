@@ -29,11 +29,11 @@ long_line_column=100
 
 [files]
 current_page=2
-FILE_NAME_0=3483;C;0;EUTF-8;0;1;1;D%3A%5Cgeany%20projects%5CcompressIt%5Csrc%5Cmain.c;0;4
-FILE_NAME_1=1092;C++;0;EUTF-8;0;1;1;D%3A%5Cgeany%20projects%5CcompressIt%5Cinclude%5Cui.h;0;4
-FILE_NAME_2=490;C;0;EUTF-8;0;1;1;D%3A%5Cgeany%20projects%5CcompressIt%5Csrc%5Cui.c;0;4
-FILE_NAME_3=5202;C;0;EUTF-8;0;1;1;D%3A%5Cgeany%20projects%5CcompressIt%5Csrc%5Chuffman.c;0;4
-FILE_NAME_4=915;C++;0;EUTF-8;0;1;1;D%3A%5Cgeany%20projects%5CcompressIt%5Cinclude%5Chuffman.h;0;4
+FILE_NAME_0=3224;C;0;EUTF-8;0;1;1;D%3A%5Cgeany%20projects%5CcompressIt%5Csrc%5Cmain.c;0;4
+FILE_NAME_1=266;C++;0;EUTF-8;0;1;1;D%3A%5Cgeany%20projects%5CcompressIt%5Cinclude%5Cui.h;0;4
+FILE_NAME_2=1963;C;0;EUTF-8;0;1;1;D%3A%5Cgeany%20projects%5CcompressIt%5Csrc%5Cui.c;0;4
+FILE_NAME_3=204;C++;0;EUTF-8;0;1;1;D%3A%5Cgeany%20projects%5CcompressIt%5Cinclude%5Chuffman.h;0;4
+FILE_NAME_4=5202;C;0;EUTF-8;0;1;1;D%3A%5Cgeany%20projects%5CcompressIt%5Csrc%5Chuffman.c;0;4
 
 [lsp]
 enabled=true
