@@ -123,12 +123,28 @@ int main(void) {
     
     // font
     {
+        //~ struct nk_font_atlas *atlas;
+        //~ nk_glfw3_font_stash_begin(&glfw, &atlas);
+        //~ nk_glfw3_font_stash_end(&glfw);
+        
         struct nk_font_atlas *atlas;
+
         nk_glfw3_font_stash_begin(&glfw, &atlas);
+
+        struct nk_font *font = nk_font_atlas_add_default(atlas, 16.0f, NULL);
+
         nk_glfw3_font_stash_end(&glfw);
+
+        nk_style_set_font(ctx, &font->handle);
+
+        
+        
+        
+        
+        
     }
     
-    
+    nk_style_push_color(ctx, &ctx->style.text.color, nk_rgb(255, 255, 255));
     
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();

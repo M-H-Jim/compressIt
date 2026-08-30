@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <windows.h>
+#include <fileapi.h>
 
 #define NK_INCLUDE_STANDARD_VARARGS
 
@@ -12,7 +14,7 @@
 #define NODE_HEIGHT 50.0f
 
 HuffmanTreeView view = {
-    .zoom = 1.0f,
+    .zoom = 0.5f,
     .panX = 300.0f,
     .panY = 80.0f,
     .dragging = false,
@@ -156,7 +158,8 @@ void drawTreeNodes(struct nk_context *ctx, HuffmanUINode *node) {
         if (hovered) {
             nk_fill_rect(canvas, rect, 6.0f, nk_rgb(35, 95, 70));
             nk_stroke_rect(canvas, rect, 6.0f, 3.0f, nk_rgb(70, 210, 150));
-            nk_tooltipf(ctx, "Char: |%c|  Hex: 0x%02X  Frequency: %lld", node->node->character, node->node->character, node->node->frequency);
+            if (isprint(node->node->character)) nk_tooltipf(ctx, "Char: |%c|  Hex: 0x%02X  Frequency: %lld", node->node->character, node->node->character, node->node->frequency);
+            else nk_tooltipf(ctx, "Hex: 0x%02X  Frequency: %lld", node->node->character, node->node->frequency);
         }
         else {
             nk_fill_rect(canvas, rect, 6.0f, nk_rgb(30, 75, 55));
@@ -241,6 +244,11 @@ void uiDraw(struct nk_context *ctx, UI *ui, int windowWidth, int windowHeight, C
     nk_end(ctx);
 }
 
+LARGE_INTEGER start;
+LARGE_INTEGER end;
+LARGE_INTEGER frequency;
+
+double compressionTime;
 
 static void drawFileSection(struct nk_context *ctx, UI *ui, CompressCallback compressCallback, HuffmanNode **root, HuffmanUINode **uiNode) {
     
@@ -258,11 +266,18 @@ static void drawFileSection(struct nk_context *ctx, UI *ui, CompressCallback com
     
     if (nk_button_label(ctx, "Compress It")) {
         if (compressCallback) {
+            
+            QueryPerformanceFrequency(&frequency);
+            QueryPerformanceCounter(&start);
+            
             compressCallback(ui->compressionData, ui->state->droppedPath);
+            
+            QueryPerformanceCounter(&end);
+            compressionTime = (double)(end.QuadPart - start.QuadPart) / (double)frequency.QuadPart;
+            
             ui->state->showTabs = nk_true;
             
             printf("inside->%p\n", *root);
-            
             
             
             
@@ -290,11 +305,13 @@ static void drawFileSection(struct nk_context *ctx, UI *ui, CompressCallback com
     }
     if (nk_button_label(ctx, "Decompress It")) {
         printf("ctx");
+        huffmanDecompress(ui->state->droppedPath);
     } 
 }
 
 static void drawTabs(struct nk_context *ctx, UIState *state) {
     static const char *tabNames[] = {
+        "Statistics",
         "Frequency Graph",
         "Huffman Codes",
         "Visualization"
@@ -303,9 +320,9 @@ static void drawTabs(struct nk_context *ctx, UIState *state) {
     nk_style_push_vec2(ctx, &ctx->style.window.spacing, nk_vec2(0, 0));
     nk_style_push_float(ctx, &ctx->style.button.rounding, 0);
     
-    nk_layout_row_begin(ctx, NK_STATIC, 30, 3);
+    nk_layout_row_begin(ctx, NK_STATIC, 30, 4);
     
-    for (uint8_t i = 0; i < 3; i++) {
+    for (uint8_t i = 0; i < 4; i++) {
         const struct nk_user_font *font = ctx->style.font;
         
         float textWidth = font->width(font->userdata, font->height, tabNames[i], nk_strlen(tabNames[i]));
@@ -338,10 +355,17 @@ void zoomAt (float mouseX, float mouseY, float zoomFactor) {
     float treeY = (mouseY - view.panY) / oldZoom;
     float newZoom = oldZoom * zoomFactor;
     if (newZoom < 0.1f) newZoom = 0.1f;
-    if (newZoom > 5.0f) newZoom = 5.0f;
+    if (newZoom > 0.7f) newZoom = 0.7f;
     view.zoom = newZoom;
     view.panX = mouseX - treeX * newZoom;
     view.panY = mouseY - treeY * newZoom;
+}
+
+
+uint64_t get_fileSize (const char *path) {
+    WIN32_FILE_ATTRIBUTE_DATA data;
+    if (!GetFileAttributesExA(path, GetFileExInfoStandard, &data)) return 0;
+    return ((uint64_t)data.nFileSizeHigh << 32) | (uint64_t)data.nFileSizeLow;
 }
 
 
@@ -350,14 +374,109 @@ void zoomAt (float mouseX, float mouseY, float zoomFactor) {
 static void drawTabContent(struct nk_context *ctx, UI *ui, int windowHeight, HuffmanUINode *uiNode) {
     switch (ui->state->currentTab) {
         case 0: {
-            drawFrequencyGraph(ctx, ui, windowHeight);
+            
+            nk_style_push_color(ctx, &ctx->style.text.color, nk_rgb(255, 255, 255));
+            
+            
+            
+            const char *originalPath = ui->state->droppedPath;
+            char compressedPath[PATH_MAX];
+            snprintf(compressedPath, sizeof(compressedPath), "%s.huff", originalPath);
+            
+            uint64_t originalSize = get_fileSize(originalPath);
+            uint64_t compressedSize = get_fileSize(compressedPath);
+            
+            
+            char originalText[64];
+            char compressedText[64];
+
+            snprintf(originalText, sizeof(originalText), "%llu bytes", (unsigned long long)originalSize);
+            snprintf(compressedText, sizeof(compressedText), "%llu bytes", (unsigned long long)compressedSize);
+
+            nk_layout_row_dynamic(ctx, 35, 1);
+            nk_label(ctx, "Compression Statistics", NK_TEXT_CENTERED);
+            
+            nk_layout_row_dynamic(ctx, 90, 2);
+
+            if (nk_group_begin(ctx, "Original", NK_WINDOW_BORDER)) {
+                nk_layout_row_dynamic(ctx, 30, 1);
+                nk_label(ctx, "ORIGINAL", NK_TEXT_CENTERED);
+
+                nk_layout_row_dynamic(ctx, 35, 1);
+                nk_label(ctx, originalText, NK_TEXT_CENTERED);
+            }
+            nk_group_end(ctx);
+
+            if (nk_group_begin(ctx, "Compressed", NK_WINDOW_BORDER)) {
+                nk_layout_row_dynamic(ctx, 30, 1);
+                nk_label(ctx, "COMPRESSED", NK_TEXT_CENTERED);
+
+                nk_layout_row_dynamic(ctx, 35, 1);
+                nk_label(ctx, compressedText, NK_TEXT_CENTERED);
+            }
+            nk_group_end(ctx);
+            
+            
+            uint64_t savedBytes = originalSize > compressedSize ? originalSize - compressedSize : 0;
+            
+            double savedPercent =
+                ((double)savedBytes / (double)originalSize) * 100.0;
+            
+            double ratio =
+                (double)originalSize / (double)compressedSize;
+            
+            char savedText[64];
+            char percentText[64];
+            char ratioText[64];
+            
+            snprintf(savedText, sizeof(savedText), "%lld Bytes", savedBytes);
+            
+            snprintf(percentText, sizeof(percentText), "%.1f%% smaller", savedPercent);
+            
+            snprintf(ratioText, sizeof(ratioText), "%.2f : 1", ratio);
+            if (nk_group_begin(ctx, "Compress Stats", NK_WINDOW_BORDER)) {
+                nk_layout_row_dynamic(ctx, 30, 3);
+                
+                nk_label(ctx, "SPACE SAVED", NK_TEXT_CENTERED);
+                nk_label(ctx, "COMPRESSION", NK_TEXT_CENTERED);
+                nk_label(ctx, "RATIO", NK_TEXT_CENTERED);
+                
+                nk_layout_row_dynamic(ctx, 35, 3);
+                
+                nk_label(ctx, savedText, NK_TEXT_CENTERED);
+                nk_label(ctx, percentText, NK_TEXT_CENTERED);
+                nk_label(ctx, ratioText, NK_TEXT_CENTERED);
+            }
+            nk_group_end(ctx);
+            
+            char timeText[64];
+            
+            snprintf(timeText, sizeof(timeText), "%.3f seconds", compressionTime);
+            
+            if (nk_group_begin(ctx, "Time stats", NK_WINDOW_BORDER)) {
+                nk_layout_row_dynamic(ctx, 30, 1);
+                nk_label(ctx, "Time", NK_TEXT_CENTERED);
+                nk_layout_row_dynamic(ctx, 30, 1);
+                nk_label(ctx, timeText, NK_TEXT_CENTERED);
+            }
+            nk_group_end(ctx);
+            
+            
+            nk_style_pop_color(ctx);
+            
+            
+            
             break;
         }
         case 1: {
-            drawHuffmanCodes(ctx, ui);
+            drawFrequencyGraph(ctx, ui, windowHeight);
             break;
         }
         case 2: {
+            drawHuffmanCodes(ctx, ui);
+            break;
+        }
+        case 3: {
             
             const struct nk_input in = ctx->input;
             if(in.mouse.buttons[NK_BUTTON_MIDDLE].down) {
