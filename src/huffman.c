@@ -2,22 +2,6 @@
 
 DEFINE_HEAP(HuffmanNode*, HuffmanHeap, compareHuffman)
 
-HuffmanNode* createHuffmanNode (uint8_t character, uint64_t frequency) {
-    HuffmanNode *node = (HuffmanNode *)malloc(sizeof(HuffmanNode));
-    if (!node) return NULL;
-    node->character = character;
-    node->frequency = frequency;
-    node->left = NULL;
-    node->right = NULL;
-    return node;
-}
-
-int compareHuffman (HuffmanNode *const *a, HuffmanNode *const *b) {
-    if ((*a)->frequency < (*b)->frequency) return 1;
-    if ((*a)->frequency > (*b)->frequency) return -1;
-    return 0;
-}
-
 HuffmanNode* buildHuffmanTree (HuffmanHeap *heap) {
     if (!heap || sizeHuffmanHeap(heap) == 0) return NULL;
     while (sizeHuffmanHeap(heap) > 1) {
@@ -40,9 +24,35 @@ HuffmanNode* buildHuffmanTree (HuffmanHeap *heap) {
     return root;
 }
 
-void generateCodes (HuffmanNode *node, char *code, char *codes[256], size_t depth) {
-    if (!node) return;
-    if (node->left == NULL && node->right == NULL) {
+HuffmanNode* createHuffmanNode (uint8_t character, uint64_t frequency) {
+    HuffmanNode *node = (HuffmanNode *)malloc(sizeof(HuffmanNode));
+    if (!node) return NULL;
+    node->character = character;
+    node->frequency = frequency;
+    node->left = NULL;
+    node->right = NULL;
+    return node;
+}
+
+int compareHuffman (HuffmanNode *const *a, HuffmanNode *const *b) {
+    if ((*a)->frequency < (*b)->frequency) return 1;
+    if ((*a)->frequency > (*b)->frequency) return -1;
+    return 0;
+}
+
+bool isLeaf(HuffmanNode *node) {
+    return node && node->left == NULL && node->right == NULL;
+}
+
+size_t getTreeSize(HuffmanNode *root) { // gets the length of the serializeTree string
+    if (!root) return 0;
+    if(isLeaf(root)) return 2;
+    return 1 + getTreeSize(root->left) + getTreeSize(root->right);
+}
+
+bool generateCodes (HuffmanNode *node, char *code, char *codes[256], size_t depth) {
+    //~ if (!node) return false;
+    if (isLeaf(node)) {
         if (depth == 0) {
             code[0] = '0';
             code[1] = '\0';
@@ -58,8 +68,8 @@ void generateCodes (HuffmanNode *node, char *code, char *codes[256], size_t dept
         
         strcpy((char *)codes[node->character], (const char *)code);
         
-        printf("%c -> %s\n", node->character, codes[node->character]);/////////
-        return;
+        printf("%c -> %s\n", node->character, codes[node->character]);/////////////debug
+        return true;
     }
     
     code[depth] = '0';
@@ -68,31 +78,7 @@ void generateCodes (HuffmanNode *node, char *code, char *codes[256], size_t dept
     code[depth] = '1';
     generateCodes(node->right, code, codes, depth + 1);
     
-}
-
-bool isLeaf(HuffmanNode *node) {
-    return node && node->left == NULL && node->right == NULL;
-}
-
-void freeHuffmanTree(HuffmanNode *node) {
-    if (!node) return;
-    freeHuffmanTree(node->left);
-    freeHuffmanTree(node->right);
-    free(node);
-}
-
-
-void freeCodes(char *codes[BYTE_COUNT]) {
-    for (uint16_t i = 0; i < BYTE_COUNT; i++) {
-        free(codes[i]);
-        codes[i] = NULL;
-    }
-}
-
-size_t getTreeSize(HuffmanNode *root) { // gets the length of the serializeTree string
-    if (!root) return 0;
-    if(isLeaf(root)) return 2;
-    return 1 + getTreeSize(root->left) + getTreeSize(root->right);
+    return true;
 }
 
 bool serializeTree(HuffmanNode *root, FILE *output) {
@@ -142,8 +128,18 @@ HuffmanNode* deserializeTree(FILE *input) {
     return NULL;
 }
 
-
-
+void freeHuffmanTree(HuffmanNode *node) {
+    if (!node) return;
+    freeHuffmanTree(node->left);
+    freeHuffmanTree(node->right);
+    free(node);
+}
+void freeCodes(char *codes[BYTE_COUNT]) {
+    for (uint16_t i = 0; i < BYTE_COUNT; i++) {
+        free(codes[i]);
+        codes[i] = NULL;
+    }
+}
 
 bool huffmanCompress(uint64_t frequency[], char *codes[256], const char *inputFilePath, int *count, int *mx, HuffmanNode **node) {
     
@@ -159,7 +155,7 @@ bool huffmanCompress(uint64_t frequency[], char *codes[256], const char *inputFi
     int byte;
     while((byte = fgetc(input)) != EOF) {
         frequency[byte]++;
-        originalSize++;
+        originalSize++;     /////////////////////
     }
     
     rewind(input);
@@ -182,18 +178,14 @@ bool huffmanCompress(uint64_t frequency[], char *codes[256], const char *inputFi
     }
     
     HuffmanNode *root = buildHuffmanTree(heap);
-    
-    printf("b->%p\n", root);
-    *node = root;
-    
-    
-    
     if (!root) {
         freeHuffmanHeap(heap);
         fclose(input);
         return false;
     }
     
+    printf("b->%p\n", root);//////////////////////debug
+    *node = root;
     
     char code[256];
     generateCodes(root, code, codes, 0);
@@ -253,14 +245,13 @@ bool huffmanCompress(uint64_t frequency[], char *codes[256], const char *inputFi
     fclose(output);
     
     
-    //~ freeHuffmanTree(root);
+    //~ freeHuffmanTree(root);  // freed elsewhere
     freeHuffmanHeap(heap);
-    //~ freeCodes(codes);
+    //~ freeCodes(codes);   // freed elsewhere
     
     
     return 0;
 }
-
 
 bool huffmanDecompress(const char *inputFilePath) {
     char outputFilePath[PATH_MAX];

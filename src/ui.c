@@ -15,8 +15,8 @@
 
 HuffmanTreeView view = {
     .zoom = 0.5f,
-    .panX = 300.0f,
-    .panY = 80.0f,
+    .panX = 0.0f,
+    .panY = 0.0f,
     .dragging = false,
     .dragStartX = 0.0f,
     .dragStartY = 0.0f,
@@ -44,7 +44,7 @@ static bool pointInNode(float x,float y, float nodeX, float nodeY) {
            y <= nodeY + NODE_HEIGHT / 2.0f;
 }
 
-static HuffmanUINode *findHoveredNode (HuffmanUINode *node, float treeX, float treeY) {
+static HuffmanUINode* findHoveredNode (HuffmanUINode *node, float treeX, float treeY) {
     if (node == NULL) return NULL;
     if (pointInNode(treeX, treeY, node->x, node->y)) return node;
     HuffmanUINode *found = findHoveredNode(node->left, treeX, treeY);
@@ -52,7 +52,7 @@ static HuffmanUINode *findHoveredNode (HuffmanUINode *node, float treeX, float t
     return findHoveredNode(node->right, treeX, treeY);
 }
 
-HuffmanUINode* createUITree(HuffmanNode *node) {
+HuffmanUINode* createHuffmanUiTree(HuffmanNode *node) {
     if (node == NULL) return NULL;
     
     HuffmanUINode *uiNode = malloc(sizeof(HuffmanUINode));
@@ -60,13 +60,13 @@ HuffmanUINode* createUITree(HuffmanNode *node) {
     uiNode->node = node;
     uiNode->x = 0;
     uiNode->y = 0;
-    uiNode->left = createUITree(node->left);
-    uiNode->right = createUITree(node->right);
+    uiNode->left = createHuffmanUiTree(node->left);
+    uiNode->right = createHuffmanUiTree(node->right);
     
     return uiNode;
 }
 
-void layoutLeaves(HuffmanUINode *node, int *leafIndex) {
+void layoutLeavesX(HuffmanUINode *node, int *leafIndex) {
     if (node == NULL) return;
     
     if (node->left == NULL && node->right == NULL) {
@@ -74,8 +74,8 @@ void layoutLeaves(HuffmanUINode *node, int *leafIndex) {
         (*leafIndex)++;
         return;
     }
-    layoutLeaves(node->left, leafIndex);
-    layoutLeaves(node->right, leafIndex);
+    layoutLeavesX(node->left, leafIndex);
+    layoutLeavesX(node->right, leafIndex);
 }
 
 void layoutInternalNodes (HuffmanUINode *node) {
@@ -110,7 +110,7 @@ void drawTreeConnections(struct nk_context *ctx, HuffmanUINode *node) {
         float x2, y2;
         treeToScreen(node->left->x, node->left->y, &x2, &y2);
         
-        nk_stroke_line(canvas, x1, y1, x2, y2, 2.0f, nk_rgb(200, 200, 200));
+        nk_stroke_line(canvas, x1, y1, x2, y2, 2.0f, nk_rgb(255, 255, 255));
         
         float mx = (x1 + x2) / 2.0f;
         float my = (y1 + y2) / 2.0f;
@@ -122,7 +122,7 @@ void drawTreeConnections(struct nk_context *ctx, HuffmanUINode *node) {
     if (node->right != NULL) {
         float x2, y2;
         treeToScreen(node->right->x, node->right->y, &x2, &y2);
-        nk_stroke_line(canvas, x1, y1, x2, y2, 2.0f, nk_rgb(200, 200, 200));
+        nk_stroke_line(canvas, x1, y1, x2, y2, 2.0f, nk_rgb(255, 255, 255));
         
         float mx = (x1 + x2) / 2.0f;
         float my = (y1 + y2) / 2.0f;
@@ -178,12 +178,8 @@ void drawTreeNodes(struct nk_context *ctx, HuffmanUINode *node) {
         }
     }
     
-    
     char text[64];
-    //~ if (isLeaf) {
-        //~ if (isprint(node->node->character)) snprintf(text, sizeof(text), "0x%02X  |%c| : %lld", node->node->character, node->node->character, node->node->frequency);
-    //~ }
-
+    
     if (isLeaf) snprintf(text, sizeof(text), "0x%02X", node->node->character);
     else snprintf(text, sizeof(text), "%lld", node->node->frequency);
 
@@ -198,10 +194,10 @@ void drawTreeNodes(struct nk_context *ctx, HuffmanUINode *node) {
 }
 
 
-void freeUITree (HuffmanUINode *node) {
+void freeHuffmanUiTree (HuffmanUINode *node) {
     if (node == NULL) return;
-    freeUITree(node->left);
-    freeUITree(node->right);
+    freeHuffmanUiTree(node->left);
+    freeHuffmanUiTree(node->right);
     free(node);
 }
 
@@ -226,7 +222,7 @@ void freeUITree (HuffmanUINode *node) {
 
 
 void uiDraw(struct nk_context *ctx, UI *ui, int windowWidth, int windowHeight, CompressCallback compressCallback, HuffmanNode **root, HuffmanUINode **uiNode) {
-    if (!nk_begin(ctx, "CompressIt by M.H.Jim", nk_rect(0, 0, windowWidth, windowHeight), NK_WINDOW_BORDER | NK_WINDOW_TITLE)) {
+    if (!nk_begin(ctx, "CompressIt by M.H.Jim", nk_rect(0, 0, windowWidth, windowHeight), NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_NO_SCROLLBAR)) {
         nk_end(ctx);
         return;
     }
@@ -249,8 +245,21 @@ LARGE_INTEGER end;
 LARGE_INTEGER frequency;
 
 double compressionTime;
+uint64_t originalSize;
+uint64_t compressedSize;
+
+
+uint64_t get_fileSize (const char *path) {
+    WIN32_FILE_ATTRIBUTE_DATA data;
+    if (!GetFileAttributesExA(path, GetFileExInfoStandard, &data)) return 0;
+    return ((uint64_t)data.nFileSizeHigh << 32) | (uint64_t)data.nFileSizeLow;
+}
+
+
 
 static void drawFileSection(struct nk_context *ctx, UI *ui, CompressCallback compressCallback, HuffmanNode **root, HuffmanUINode **uiNode) {
+    
+    
     
     if (ui->state->droppedPath[0] == '\0') {
         nk_layout_row_dynamic(ctx, 50, 1);
@@ -265,6 +274,7 @@ static void drawFileSection(struct nk_context *ctx, UI *ui, CompressCallback com
     nk_layout_row_dynamic(ctx, 30, 2);
     
     if (nk_button_label(ctx, "Compress It")) {
+        ui->state->decompressionDone = false;
         if (compressCallback) {
             
             QueryPerformanceFrequency(&frequency);
@@ -281,23 +291,21 @@ static void drawFileSection(struct nk_context *ctx, UI *ui, CompressCallback com
             
             
             
-            freeUITree(*uiNode);//////
+            freeHuffmanUiTree(*uiNode);//////
             
-            *uiNode = createUITree(*root);
+            *uiNode = createHuffmanUiTree(*root);
             
             int leafIndex = 0;
-            layoutLeaves(*uiNode, &leafIndex);
+            layoutLeavesX(*uiNode, &leafIndex);
             layoutInternalNodes(*uiNode);
-            layoutY(*uiNode, 150.0);
+            layoutY(*uiNode, 500.0);
             
+            const char *originalPath = ui->state->droppedPath;
+            char compressedPath[PATH_MAX];
+            snprintf(compressedPath, sizeof(compressedPath), "%s.huff", originalPath);
             
-            
-            for (int i = 0; i < 10; i++) {
-                printf("%f", (*uiNode)->x);
-            }
-            
-            
-            
+            originalSize = get_fileSize(originalPath);
+            compressedSize = get_fileSize(compressedPath);
             
             
             
@@ -306,7 +314,14 @@ static void drawFileSection(struct nk_context *ctx, UI *ui, CompressCallback com
     if (nk_button_label(ctx, "Decompress It")) {
         printf("ctx");
         huffmanDecompress(ui->state->droppedPath);
-    } 
+        ui->state->showTabs = false;
+        ui->state->decompressionDone = true;
+    }
+    if (ui->state->decompressionDone) {
+        nk_layout_row_dynamic(ctx, 50, 1);
+        nk_label(ctx, "Decompression done", NK_TEXT_ALIGN_CENTERED);
+        return;
+    }
 }
 
 static void drawTabs(struct nk_context *ctx, UIState *state) {
@@ -320,7 +335,7 @@ static void drawTabs(struct nk_context *ctx, UIState *state) {
     nk_style_push_vec2(ctx, &ctx->style.window.spacing, nk_vec2(0, 0));
     nk_style_push_float(ctx, &ctx->style.button.rounding, 0);
     
-    nk_layout_row_begin(ctx, NK_STATIC, 30, 4);
+    nk_layout_row_begin(ctx, NK_STATIC, 40, 4);
     
     for (uint8_t i = 0; i < 4; i++) {
         const struct nk_user_font *font = ctx->style.font;
@@ -362,107 +377,13 @@ void zoomAt (float mouseX, float mouseY, float zoomFactor) {
 }
 
 
-uint64_t get_fileSize (const char *path) {
-    WIN32_FILE_ATTRIBUTE_DATA data;
-    if (!GetFileAttributesExA(path, GetFileExInfoStandard, &data)) return 0;
-    return ((uint64_t)data.nFileSizeHigh << 32) | (uint64_t)data.nFileSizeLow;
-}
-
-
 
 
 static void drawTabContent(struct nk_context *ctx, UI *ui, int windowHeight, HuffmanUINode *uiNode) {
     switch (ui->state->currentTab) {
         case 0: {
             
-            nk_style_push_color(ctx, &ctx->style.text.color, nk_rgb(255, 255, 255));
-            
-            
-            
-            const char *originalPath = ui->state->droppedPath;
-            char compressedPath[PATH_MAX];
-            snprintf(compressedPath, sizeof(compressedPath), "%s.huff", originalPath);
-            
-            uint64_t originalSize = get_fileSize(originalPath);
-            uint64_t compressedSize = get_fileSize(compressedPath);
-            
-            
-            char originalText[64];
-            char compressedText[64];
-
-            snprintf(originalText, sizeof(originalText), "%llu bytes", (unsigned long long)originalSize);
-            snprintf(compressedText, sizeof(compressedText), "%llu bytes", (unsigned long long)compressedSize);
-
-            nk_layout_row_dynamic(ctx, 35, 1);
-            nk_label(ctx, "Compression Statistics", NK_TEXT_CENTERED);
-            
-            nk_layout_row_dynamic(ctx, 90, 2);
-
-            if (nk_group_begin(ctx, "Original", NK_WINDOW_BORDER)) {
-                nk_layout_row_dynamic(ctx, 30, 1);
-                nk_label(ctx, "ORIGINAL", NK_TEXT_CENTERED);
-
-                nk_layout_row_dynamic(ctx, 35, 1);
-                nk_label(ctx, originalText, NK_TEXT_CENTERED);
-            }
-            nk_group_end(ctx);
-
-            if (nk_group_begin(ctx, "Compressed", NK_WINDOW_BORDER)) {
-                nk_layout_row_dynamic(ctx, 30, 1);
-                nk_label(ctx, "COMPRESSED", NK_TEXT_CENTERED);
-
-                nk_layout_row_dynamic(ctx, 35, 1);
-                nk_label(ctx, compressedText, NK_TEXT_CENTERED);
-            }
-            nk_group_end(ctx);
-            
-            
-            uint64_t savedBytes = originalSize > compressedSize ? originalSize - compressedSize : 0;
-            
-            double savedPercent =
-                ((double)savedBytes / (double)originalSize) * 100.0;
-            
-            double ratio =
-                (double)originalSize / (double)compressedSize;
-            
-            char savedText[64];
-            char percentText[64];
-            char ratioText[64];
-            
-            snprintf(savedText, sizeof(savedText), "%lld Bytes", savedBytes);
-            
-            snprintf(percentText, sizeof(percentText), "%.1f%% smaller", savedPercent);
-            
-            snprintf(ratioText, sizeof(ratioText), "%.2f : 1", ratio);
-            if (nk_group_begin(ctx, "Compress Stats", NK_WINDOW_BORDER)) {
-                nk_layout_row_dynamic(ctx, 30, 3);
-                
-                nk_label(ctx, "SPACE SAVED", NK_TEXT_CENTERED);
-                nk_label(ctx, "COMPRESSION", NK_TEXT_CENTERED);
-                nk_label(ctx, "RATIO", NK_TEXT_CENTERED);
-                
-                nk_layout_row_dynamic(ctx, 35, 3);
-                
-                nk_label(ctx, savedText, NK_TEXT_CENTERED);
-                nk_label(ctx, percentText, NK_TEXT_CENTERED);
-                nk_label(ctx, ratioText, NK_TEXT_CENTERED);
-            }
-            nk_group_end(ctx);
-            
-            char timeText[64];
-            
-            snprintf(timeText, sizeof(timeText), "%.3f seconds", compressionTime);
-            
-            if (nk_group_begin(ctx, "Time stats", NK_WINDOW_BORDER)) {
-                nk_layout_row_dynamic(ctx, 30, 1);
-                nk_label(ctx, "Time", NK_TEXT_CENTERED);
-                nk_layout_row_dynamic(ctx, 30, 1);
-                nk_label(ctx, timeText, NK_TEXT_CENTERED);
-            }
-            nk_group_end(ctx);
-            
-            
-            nk_style_pop_color(ctx);
+            drawStatistics(ctx, ui);
             
             
             
@@ -523,7 +444,88 @@ static void drawTabContent(struct nk_context *ctx, UI *ui, int windowHeight, Huf
 }
 
 
+static void drawStatistics(struct nk_context *ctx, UI *ui) {
+    
+    
+            nk_style_push_color(ctx, &ctx->style.text.color, nk_rgb(255, 255, 255));
+            nk_style_push_font(ctx, &ui->fonts->large->handle);
+            
+            char originalText[64];
+            char compressedText[64];
 
+            snprintf(originalText, sizeof(originalText), "%llu bytes", (unsigned long long)originalSize);
+            snprintf(compressedText, sizeof(compressedText), "%llu bytes", (unsigned long long)compressedSize);
+
+            nk_layout_row_dynamic(ctx, 35, 1);
+            nk_label(ctx, "Compression Statistics", NK_TEXT_CENTERED);
+            
+            nk_layout_row_dynamic(ctx, 90, 2);
+
+            if (nk_group_begin(ctx, "Original", NK_WINDOW_BORDER)) {
+                nk_layout_row_dynamic(ctx, 30, 1);
+                nk_label(ctx, "ORIGINAL", NK_TEXT_CENTERED);
+
+                nk_layout_row_dynamic(ctx, 35, 1);
+                nk_label(ctx, originalText, NK_TEXT_CENTERED);
+                nk_group_end(ctx);
+            }
+
+            if (nk_group_begin(ctx, "Compressed", NK_WINDOW_BORDER)) {
+                nk_layout_row_dynamic(ctx, 30, 1);
+                nk_label(ctx, "COMPRESSED", NK_TEXT_CENTERED);
+
+                nk_layout_row_dynamic(ctx, 35, 1);
+                nk_label(ctx, compressedText, NK_TEXT_CENTERED);
+                nk_group_end(ctx);
+            }
+            
+            
+            uint64_t savedBytes = originalSize > compressedSize ? originalSize - compressedSize : 0;
+            
+            double savedPercent = ((double)savedBytes / (double)originalSize) * 100.0;
+            
+            double ratio = (double)originalSize / (double)compressedSize;
+            
+            char savedText[64];
+            char percentText[64];
+            char ratioText[64];
+            
+            snprintf(savedText, sizeof(savedText), "%lld Bytes", savedBytes);
+            
+            snprintf(percentText, sizeof(percentText), "%.1f%% smaller", savedPercent);
+            
+            snprintf(ratioText, sizeof(ratioText), "%.2f : 1", ratio);
+            if (nk_group_begin(ctx, "Compress Stats", NK_WINDOW_BORDER)) {
+                nk_layout_row_dynamic(ctx, 30, 3);
+                
+                nk_label(ctx, "SPACE SAVED", NK_TEXT_CENTERED);
+                nk_label(ctx, "COMPRESSION", NK_TEXT_CENTERED);
+                nk_label(ctx, "RATIO", NK_TEXT_CENTERED);
+                
+                nk_layout_row_dynamic(ctx, 35, 3);
+                
+                nk_label(ctx, savedText, NK_TEXT_CENTERED);
+                nk_label(ctx, percentText, NK_TEXT_CENTERED);
+                nk_label(ctx, ratioText, NK_TEXT_CENTERED);
+                nk_group_end(ctx);
+            }
+            
+            char timeText[64];
+            
+            snprintf(timeText, sizeof(timeText), "%.3f seconds", compressionTime);
+            
+            if (nk_group_begin(ctx, "Time stats", NK_WINDOW_BORDER)) {
+                nk_layout_row_dynamic(ctx, 30, 1);
+                nk_label(ctx, "Time", NK_TEXT_CENTERED);
+                nk_layout_row_dynamic(ctx, 30, 1);
+                nk_label(ctx, timeText, NK_TEXT_CENTERED);
+                nk_group_end(ctx);
+            }
+            
+            nk_style_pop_font(ctx);
+            nk_style_pop_color(ctx);
+    
+}
 static void drawFrequencyGraph(struct nk_context *ctx, UI *ui, int windowHeight) {
     int hovered = -1;
     
@@ -565,6 +567,8 @@ static void drawFrequencyGraph(struct nk_context *ctx, UI *ui, int windowHeight)
 
 static void drawHuffmanCodes(struct nk_context *ctx, UI *ui) {
     
+    nk_style_push_font(ctx, &ui->fonts->large->handle);
+    
     struct nk_color old_color = ctx->style.text.color;
     ctx->style.text.color = nk_rgb(255, 255, 255);
     
@@ -586,16 +590,12 @@ static void drawHuffmanCodes(struct nk_context *ctx, UI *ui) {
         nk_label(ctx, character, NK_TEXT_LEFT);
         nk_labelf(ctx, NK_TEXT_LEFT, "%lld", ui->compressionData->frequency[i]);
         
-        //~ char code[256];
-        //~ snprintf(code, sizeof(code), "%s", ui->compressionData->codes[i]);
-        //~ nk_flags flags = NK_EDIT_FIELD | NK_EDIT_READ_ONLY;
-        //~ nk_edit_string(ctx, flags, code, &(int){(int)strlen(code)}, sizeof(code), nk_filter_default);
-        
         
         nk_label(ctx, ui->compressionData->codes[i], NK_TEXT_LEFT);
         
     }
     ctx->style.text.color = old_color;
+    nk_style_pop_font(ctx);
 }
 
 

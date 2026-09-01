@@ -34,9 +34,11 @@ void processInput(GLFWwindow *window);
 
 CompressionData compressionData = {0};
 UIState state = {0};
+Fonts fonts = {0};
 UI ui = {
     .compressionData = &compressionData,
-    .state = &state
+    .state = &state,
+    .fonts = &fonts
 };
 
 HuffmanNode *root = NULL;
@@ -131,11 +133,13 @@ int main(void) {
 
         nk_glfw3_font_stash_begin(&glfw, &atlas);
 
-        struct nk_font *font = nk_font_atlas_add_default(atlas, 16.0f, NULL);
+        ui.fonts->small  = nk_font_atlas_add_default(atlas, 16.0f, NULL);
+        ui.fonts->normal = nk_font_atlas_add_default(atlas, 20.0f, NULL);
+        ui.fonts->large  = nk_font_atlas_add_default(atlas, 26.0f, NULL);
 
         nk_glfw3_font_stash_end(&glfw);
 
-        nk_style_set_font(ctx, &font->handle);
+        nk_style_set_font(ctx, &ui.fonts->small->handle);
 
         
         
@@ -176,7 +180,7 @@ int main(void) {
     
     
     freeCodes(compressionData.codes);
-    freeUITree(uiNode);
+    freeHuffmanUiTree(uiNode);
     nk_glfw3_shutdown(&glfw);
     glfwDestroyWindow(window);
     glfwTerminate();
