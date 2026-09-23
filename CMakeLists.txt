@@ -5,7 +5,7 @@ project(compressIt C)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-add_executable(compressIt
+add_executable(compressIt WIN32
     src/main.c
     src/huffman.c
     src/ui.c
@@ -26,3 +26,4 @@ target_link_libraries(compressIt PRIVATE
     opengl32
     gdi32
 )
+

@@ -66,7 +66,7 @@ void compressCallback(CompressionData *compressionData, const char *path) {
     freeHuffmanTree(root);
     
     huffmanCompress(compressionData->frequency, compressionData->codes, path, &compressionData->count, &compressionData->maxFrequency, &root);
-    printf("a->%p\n", root);
+    //~ printf("a->%p\n", root);
 
 }
 

@@ -3,6 +3,9 @@
 *.db
 *.a
 *.clangd
+*.zip
 lib/
 build/
 debug/
+release/
+compressIt/

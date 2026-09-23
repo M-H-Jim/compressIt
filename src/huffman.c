@@ -62,13 +62,13 @@ bool generateCodes (HuffmanNode *node, char *code, char *codes[256], size_t dept
         
         codes[node->character] = malloc(strlen(code) + 1);
         if (!codes[node->character]) {
-            fprintf(stderr, "malloc failed\n");
+            //~ fprintf(stderr, "malloc failed\n");
             exit(EXIT_FAILURE);
         }
         
         strcpy((char *)codes[node->character], (const char *)code);
         
-        printf("%c -> %s\n", node->character, codes[node->character]);/////////////debug
+        //~ printf("%c -> %s\n", node->character, codes[node->character]);/////////////debug
         return true;
     }
     
@@ -184,7 +184,7 @@ bool huffmanCompress(uint64_t frequency[], char *codes[256], const char *inputFi
         return false;
     }
     
-    printf("b->%p\n", root);//////////////////////debug
+    //~ printf("b->%p\n", root);//////////////////////debug
     *node = root;
     
     char code[256];
@@ -259,7 +259,7 @@ bool huffmanDecompress(const char *inputFilePath) {
     size_t pathLength = strlen(outputFilePath);
     
     if (pathLength < 5 || strcmp(outputFilePath + pathLength - 5, ".huff") != 0) {
-        fprintf(stderr, "Input file must have .huff extension\n");
+        //~ fprintf(stderr, "Input file must have .huff extension\n");
         return false;
     }
     
@@ -273,13 +273,13 @@ bool huffmanDecompress(const char *inputFilePath) {
     
     char magic[4];
     if (fread(magic, 1, 4, input) != 4) {
-        fprintf(stderr, "Invalid Huffman file: cannot read header\n");
+        //~ fprintf(stderr, "Invalid Huffman file: cannot read header\n");
         fclose(input);
         return false;
     }
     
     if (memcmp(magic, "HUFF", 4) != 0) {
-        fprintf(stderr, "Invalid Huffman file: bad magic\n");
+        //~ fprintf(stderr, "Invalid Huffman file: bad magic\n");
         fclose(input);
         return false;
     }
@@ -287,12 +287,12 @@ bool huffmanDecompress(const char *inputFilePath) {
     uint64_t originalSize;
     size_t treeSize;
     if (fread(&originalSize, sizeof(originalSize), 1, input) != 1) {
-        fprintf(stderr, "Invalid Huffman file: cannot read original size\n");
+        //~ fprintf(stderr, "Invalid Huffman file: cannot read original size\n");
         fclose(input);
         return false;
     }
     if(fread(&treeSize, sizeof(treeSize), 1, input) != 1) {
-        fprintf(stderr, "Invalid Huffman file: cannot read tree size\n");
+        //~ fprintf(stderr, "Invalid Huffman file: cannot read tree size\n");
         fclose(input);
         return false;
     }
@@ -307,7 +307,7 @@ bool huffmanDecompress(const char *inputFilePath) {
     
     HuffmanNode *root = deserializeTree(input);
     if (!root) {
-        fprintf(stderr, "Invalid Huffman Tree\n");
+        //~ fprintf(stderr, "Invalid Huffman Tree\n");
         fclose(input);
         return false;
     }
@@ -322,9 +322,9 @@ bool huffmanDecompress(const char *inputFilePath) {
     
     size_t consumedTreeSize = (size_t)(treeEnd - treeStart);
     if (consumedTreeSize != treeSize) {
-        fprintf(stderr, "Invalid Huffman Tree Size\n");
-        fprintf(stderr, "Expected: %zu\n", treeSize);
-        fprintf(stderr, "Consumed: %zu\n", consumedTreeSize);
+        //~ fprintf(stderr, "Invalid Huffman Tree Size\n");
+        //~ fprintf(stderr, "Expected: %zu\n", treeSize);
+        //~ fprintf(stderr, "Consumed: %zu\n", consumedTreeSize);
         freeHuffmanTree(root);
         fclose(input);
         return false;
@@ -376,7 +376,7 @@ bool huffmanDecompress(const char *inputFilePath) {
             else current = current->right;
             
             if (!current) {
-                fprintf(stderr, "Invalid compressed data\n");
+                //~ fprintf(stderr, "Invalid compressed data\n");
                 fclose(output);
                 fclose(input);
                 freeHuffmanTree(root);
@@ -398,8 +398,8 @@ bool huffmanDecompress(const char *inputFilePath) {
     }
     
     if (decodedBytes != originalSize) {
-        fprintf(stderr, "Invalid compressed data\n");
-        fprintf(stderr, "Expected %llu bytes, decoded %llu bytes\n", (uint64_t)originalSize, (uint64_t)decodedBytes);
+        //~ fprintf(stderr, "Invalid compressed data\n");
+        //~ fprintf(stderr, "Expected %llu bytes, decoded %llu bytes\n", (uint64_t)originalSize, (uint64_t)decodedBytes);
         fclose(output);
         fclose(input);
         freeHuffmanTree(root);

@@ -247,7 +247,7 @@ LARGE_INTEGER frequency;
 double compressionTime;
 uint64_t originalSize;
 uint64_t compressedSize;
-
+nk_bool key;
 
 uint64_t get_fileSize (const char *path) {
     WIN32_FILE_ATTRIBUTE_DATA data;
@@ -287,7 +287,7 @@ static void drawFileSection(struct nk_context *ctx, UI *ui, CompressCallback com
             
             ui->state->showTabs = nk_true;
             
-            printf("inside->%p\n", *root);
+            //~ printf("inside->%p\n", *root);
             
             
             
@@ -312,14 +312,19 @@ static void drawFileSection(struct nk_context *ctx, UI *ui, CompressCallback com
         }
     }
     if (nk_button_label(ctx, "Decompress It")) {
-        printf("ctx");
-        huffmanDecompress(ui->state->droppedPath);
+        //~ printf("ctx");
+        key = huffmanDecompress(ui->state->droppedPath);
         ui->state->showTabs = false;
         ui->state->decompressionDone = true;
     }
     if (ui->state->decompressionDone) {
         nk_layout_row_dynamic(ctx, 50, 1);
-        nk_label(ctx, "Decompression done", NK_TEXT_ALIGN_CENTERED);
+        if (key) {
+            nk_label(ctx, "Decompression done", NK_TEXT_ALIGN_CENTERED);
+        }
+        else {
+            nk_label(ctx, "Something wrong happened. Cannot decompress.", NK_TEXT_ALIGN_CENTERED);
+        }
         return;
     }
 }
